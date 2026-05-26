@@ -17,12 +17,24 @@ const GAMES = [
     descriptionKey: "game.sudoku.description",
     available: true,
   },
+  {
+    id: "blockblast",
+    nameKey: "game.blockblast.name",
+    descriptionKey: "game.blockblast.description",
+    available: true,
+  },
 ];
 
 const SUDOKU_DIFFICULTIES = [
   { key: "easy", cluesKey: "sudoku.clues.easy" },
   { key: "normal", cluesKey: "sudoku.clues.normal" },
   { key: "hard", cluesKey: "sudoku.clues.hard" },
+];
+
+const BLOCKBLAST_DIFFICULTIES = [
+  { key: "easy", nameKey: "blockblast.difficulty.easy" },
+  { key: "normal", nameKey: "blockblast.difficulty.normal" },
+  { key: "hard", nameKey: "blockblast.difficulty.hard" },
 ];
 
 const SUDOKU_MAX_HEARTS = {
@@ -107,6 +119,16 @@ let sudokuState = {
 
 let sudokuTimerId = null;
 
+let blockblastState = {
+  board: [],
+  score: 0,
+  bestScore: 0,
+  combo: 0,
+  difficultyKey: "easy",
+  pieces: [],
+  gameOver: false,
+};
+
 const screens = {
   home: document.getElementById("screen-home"),
   select: document.getElementById("screen-select"),
@@ -116,6 +138,8 @@ const screens = {
   baseballPlay: document.getElementById("screen-baseball-play"),
   sudokuSelect: document.getElementById("screen-sudoku-select"),
   sudokuPlay: document.getElementById("screen-sudoku-play"),
+  blockblastSelect: document.getElementById("screen-blockblast-select"),
+  blockblastPlay: document.getElementById("screen-blockblast-play"),
   result: document.getElementById("screen-result"),
 };
 
@@ -171,6 +195,15 @@ const btnSudokuPlayBackHome = document.getElementById("btn-sudoku-play-back-home
 const sudokuHeartsEl = document.getElementById("sudoku-hearts");
 const btnSudokuInvincible = document.getElementById("btn-sudoku-invincible");
 const btnSudokuInvincibleSelect = document.getElementById("btn-sudoku-invincible-select");
+const blockblastDifficultyOptionsEl = document.getElementById("blockblast-difficulty-options");
+const blockblastBoardEl = document.getElementById("blockblast-board");
+const blockblastPiecesEl = document.getElementById("blockblast-pieces");
+const blockblastCurrentScoreEl = document.getElementById("blockblast-current-score");
+const blockblastBestScoreEl = document.getElementById("blockblast-best-score");
+const blockblastMessageEl = document.getElementById("blockblast-message");
+const blockblastDifficultyBadge = document.getElementById("blockblast-difficulty-badge");
+const btnBlockblastBackHome = document.getElementById("btn-blockblast-back-home");
+const btnBlockblastPlayBackHome = document.getElementById("btn-blockblast-play-back-home");
 
 function getActiveScreenName() {
   return Object.entries(screens).find(([, el]) => el.classList.contains("active"))?.[0];
@@ -224,6 +257,7 @@ function showScreen(name) {
 function goHome() {
   stopBaseballTimer();
   stopSudokuTimer();
+  // blockblast 관련 타이머가 생긴다면 여기에 추가
   currentGameId = null;
   selectedDigit = null;
   setHeader("home");
@@ -250,6 +284,13 @@ function goSudokuGame() {
   setHeader("sudoku");
   showScreen("sudokuSelect");
   renderSudokuDifficultySelect();
+}
+
+function goBlockblastGame() {
+  currentGameId = "blockblast";
+  setHeader("blockblast");
+  showScreen("blockblastSelect");
+  renderBlockblastDifficultySelect();
 }
 
 function randomInt(min, max) {
@@ -337,6 +378,8 @@ function renderHome() {
       if (btn.dataset.game === "guess") goGuessGame();
       if (btn.dataset.game === "baseball") goBaseballGame();
       if (btn.dataset.game === "sudoku") goSudokuGame();
+      if (btn.dataset.game === "blockblast") goBlockblastGame();
+      if (btn.dataset.game === "blockblast") goBlockblastGame();
     });
   });
 }
@@ -465,6 +508,7 @@ function initSudokuNumpad() {
 /** 스도쿠 게임판 그리드 렌더링 */
 function renderSudokuGrid() {
   const conflicts = getAllConflicts(sudokuState.user);
+  const selectedValue = sudokuState.selectedCell !== null ? sudokuState.user[sudokuState.selectedCell] : null;
 
   sudokuGridEl.innerHTML = Array.from({ length: SUDOKU_CELLS }, (_, idx) => {
     const fixed = sudokuState.fixed[idx];
@@ -478,32 +522,38 @@ function renderSudokuGrid() {
     const classes = ["sudoku-cell"];
     if (fixed) classes.push("fixed");
     if (sudokuState.selectedCell === idx) classes.push("selected");
+    
+    // 동일 숫자 강조 로직 추가
+    if (value && selectedValue && value === selectedValue && idx !== sudokuState.selectedCell) {
+      classes.push("same-number");
+    }
+
     if (conflicts.has(idx)) classes.push("conflict");
     if (value && value !== sudokuState.solution[idx]) classes.push("wrong-answer");
     if (sudokuState.hinted[idx]) classes.push("hinted");
     if (showNotes) classes.push("show-notes");
 
     return `
-      <button type="button" class="${classes.join(" ")}" data-idx="${idx}" ${fixed ? "disabled" : ""}>
+      <button type="button" class="${classes.join(" ")}" data-idx="${idx}">
         <span class="sudoku-value">${value || ""}</span>
         <div class="sudoku-notes">${noteSpans}</div>
       </button>
     `;
   }).join("");
 
-  sudokuGridEl.querySelectorAll(".sudoku-cell:not(.fixed)").forEach((btn) => {
+  sudokuGridEl.querySelectorAll(".sudoku-cell").forEach((btn) => {
     btn.addEventListener("click", () => selectSudokuCell(Number(btn.dataset.idx)));
   });
 }
 
 /** 스도쿠 특정 셀 선택 */
 function selectSudokuCell(idx) {
+  sudokuState.selectedCell = idx;
   if (sudokuState.fixed[idx]) {
     setSudokuMessage("sudoku.fixedCell");
-    return;
+  } else {
+    setSudokuMessage("");
   }
-  sudokuState.selectedCell = idx;
-  setSudokuMessage("");
   renderSudokuGrid();
 }
 
@@ -1039,6 +1089,14 @@ function refreshCurrentScreen() {
     updateSudokuHeartsDisplay();
     renderSudokuGrid();
   }
+  if (screen === "blockblastSelect") {
+    renderBlockblastDifficultySelect();
+  }
+  if (screen === "blockblastPlay") {
+    updateBlockblastScoreDisplay();
+    renderBlockblastBoard();
+    renderBlockblastPieces();
+  }
   if (screen === "result" && lastResultWon !== null) {
     if (lastResultGameId === "baseball") showBaseballResult();
     else if (lastResultGameId === "sudoku") {
@@ -1121,6 +1179,10 @@ btnReplay.addEventListener("click", () => {
     startSudokuGame(sudokuState.difficultyKey);
     return;
   }
+  if (lastResultGameId === "blockblast") {
+    startBlockblastGame(blockblastState.difficultyKey);
+    return;
+  }
   startGame(
     { digits: gameState.digits, minVal: gameState.minVal, maxVal: gameState.maxVal },
     gameState.difficultyKey
@@ -1137,6 +1199,11 @@ btnChangeDigit.addEventListener("click", () => {
   if (lastResultGameId === "sudoku") {
     showScreen("sudokuSelect");
     renderSudokuDifficultySelect();
+    return;
+  }
+  if (lastResultGameId === "blockblast") {
+    showScreen("blockblastSelect");
+    renderBlockblastDifficultySelect();
     return;
   }
   selectedDigit = null;

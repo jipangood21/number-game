@@ -135,6 +135,39 @@
         <button type="button" id="btn-sudoku-play-back-home" class="btn-text" data-i18n="btn.backHome">← 홈으로</button>
       </section>
 
+      <section id="screen-blockblast-select" class="screen">
+        <h2 data-i18n="difficulty.select">난이도 선택</h2>
+        <div class="option-grid" id="blockblast-difficulty-options"></div>
+        <button type="button" id="btn-blockblast-back-home" class="btn-text" data-i18n="btn.backHome">← 홈으로</button>
+      </section>
+
+      <section id="screen-blockblast-play" class="screen">
+        <div class="game-info">
+          <div class="badges">
+            <span class="badge" id="blockblast-difficulty-badge"></span>
+          </div>
+          <div class="game-info-right">
+            <div class="score-display">
+              <span data-i18n="blockblast.score">점수:</span>
+              <span id="blockblast-current-score">0</span>
+            </div>
+            <div class="best-display">
+              <span data-i18n="blockblast.best">최고:</span>
+              <span id="blockblast-best-score">0</span>
+            </div>
+          </div>
+        </div>
+
+        <div id="blockblast-board-container" class="blockblast-board-container">
+          <div id="blockblast-board" class="blockblast-board"></div>
+        </div>
+
+        <div id="blockblast-pieces" class="blockblast-pieces"></div>
+        
+        <p id="blockblast-message" class="blockblast-message" aria-live="polite"></p>
+        <button type="button" id="btn-blockblast-play-back-home" class="btn-text" data-i18n="btn.backHome">← 홈으로</button>
+      </section>
+
       <section id="screen-result" class="screen">
         <div class="result-card">
           <h2 id="result-title">정답입니다</h2>
@@ -255,6 +288,7 @@
   <script src="home-nav.js"></script>
   <script src="baseball.js"></script>
   <script src="sudoku.js"></script>
+  <script src="blockblast.js"></script>
   <script src="profile.js"></script>
   <script src="script.js"></script>
 </body>

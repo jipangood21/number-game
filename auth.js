@@ -4,7 +4,6 @@
  */
 
 // DOM 요소 참조
-const authBarEl = document.getElementById("auth-bar");
 const authModal = document.getElementById("auth-modal");
 const authModalBackdrop = document.getElementById("auth-modal-backdrop");
 const authTabs = document.querySelectorAll(".auth-tab");
@@ -62,8 +61,10 @@ function openAuthModal(mode = "login") {
   }
   if (authModal) authModal.classList.add("active");
   if (!isLoggedIn()) {
-    if (mode === "login" && loginUsernameInput) loginUsernameInput.focus();
-    else if (registerUsernameInput) registerUsernameInput.focus();
+    setTimeout(() => {
+      if (mode === "login" && loginUsernameInput) loginUsernameInput.focus();
+      else if (registerUsernameInput) registerUsernameInput.focus();
+    }, 100);
   }
 }
 
@@ -121,6 +122,9 @@ async function handleRegister(e) {
     setAuthError(result.error);
     return;
   }
+  
+  // 가입 후 자동 로그인
+  await loginUser(registerUsernameInput.value, password);
   closeAuthModal();
   renderAuthBar();
   if (typeof onAuthStateChanged === "function") onAuthStateChanged();
@@ -145,8 +149,6 @@ function requireLogin(action) {
 
 /** 인증 시스템 초기화 */
 function initAuth() {
-  renderAuthBar();
-
   if (btnOpenLogin) btnOpenLogin.addEventListener("click", () => openAuthModal("login"));
   if (btnAuthClose) btnAuthClose.addEventListener("click", closeAuthModal);
   if (authModalBackdrop) authModalBackdrop.addEventListener("click", closeAuthModal);
@@ -159,6 +161,8 @@ function initAuth() {
   authTabs.forEach((tab) => {
     tab.addEventListener("click", () => switchAuthTab(tab.dataset.authTab));
   });
+
+  renderAuthBar();
 }
 
 /** 다국어 전환 시 텍스트 갱신 */
