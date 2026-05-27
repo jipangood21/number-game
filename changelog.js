@@ -1,5 +1,16 @@
 const CHANGELOG = [
   {
+    version: "1.0.4",
+    date: "2026-05-27",
+    changes: [
+      "스도쿠 게임 이어하기 추가",
+      "벽돌깨기 게임 추가",
+      "ui 개편",
+      "기타 버그 수정"
+    ]
+  },
+
+  {
     version: "1.0.3",
     date: "2026-05-26",
     changes: [

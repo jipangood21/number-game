@@ -8,6 +8,10 @@ const HOME_NAV_SCREENS = new Set([
   "baseballPlay",
   "sudokuSelect",
   "sudokuPlay",
+  "blockblastSelect",
+  "blockblastPlay",
+  "brickbreakerSelect",
+  "brickbreakerPlay",
   "result",
 ]);
 

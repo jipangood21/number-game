@@ -5,40 +5,61 @@
 const BLOCKBLAST_BOARD_SIZE = 8;
 
 const BLOCK_SHAPES = {
+  // Easy: 7가지 표준 테트리스 테트로미노 (모든 회전 포함)
   easy: [
-    [[1]], // 1x1
-    [[1, 1]], // 1x2
-    [[1], [1]], // 2x1
-    [[1, 1, 1]], // 1x3
-    [[1], [1], [1]], // 3x1
-    [[1, 1], [1, 1]], // 2x2 Solid
+    // I
+    [[1, 1, 1, 1]],
+    [[1], [1], [1], [1]],
+    // O
+    [[1, 1], [1, 1]],
+    // T
+    [[0, 1, 0], [1, 1, 1]],
+    [[1, 0], [1, 1], [1, 0]],
+    [[1, 1, 1], [0, 1, 0]],
+    [[0, 1], [1, 1], [0, 1]],
+    // S
+    [[0, 1, 1], [1, 1, 0]],
+    [[1, 0], [1, 1], [0, 1]],
+    // Z
+    [[1, 1, 0], [0, 1, 1]],
+    [[0, 1], [1, 1], [1, 0]],
+    // J
+    [[1, 0, 0], [1, 1, 1]],
+    [[1, 1], [1, 0], [1, 0]],
+    [[1, 1, 1], [0, 0, 1]],
+    [[0, 1], [0, 1], [1, 1]],
+    // L
+    [[0, 0, 1], [1, 1, 1]],
+    [[1, 0], [1, 0], [1, 1]],
+    [[1, 1, 1], [1, 0, 0]],
+    [[1, 1], [0, 1], [0, 1]],
   ],
+  // Normal: 5~6칸 펜토미노 및 커스텀 도형
   normal: [
-    [[1, 1, 1], [0, 1, 0]], // T
-    [[0, 1, 1], [1, 1, 0]], // S
-    [[1, 1, 0], [0, 1, 1]], // Z
-    [[1, 0], [1, 0], [1, 1]], // L
-    [[0, 1], [0, 1], [1, 1]], // J
-    [[1, 1, 1, 1]], // 1x4
-    [[1], [1], [1], [1]], // 4x1
-    [[1, 1], [1, 0]], // Mini L
-    [[1, 1], [0, 1]], // Mini J
-    [[1, 0, 1], [1, 1, 1]], // U-shape small
+    [[1, 1, 1, 1, 1]],                        // I5 가로
+    [[1], [1], [1], [1], [1]],                 // I5 세로
+    [[0, 1, 0], [1, 1, 1], [0, 1, 0]],         // 십자(+)
+    [[1, 0, 1], [1, 1, 1]],                    // U (가로)
+    [[1, 1], [1, 0], [1, 1]],                  // C (세로)
+    [[1, 1], [1, 1], [1, 0]],                  // P형
+    [[1, 1], [1, 1], [0, 1]],                  // P형 미러
+    [[1, 1, 0], [0, 1, 0], [0, 1, 1]],         // S형 지그재그
+    [[0, 1, 1], [0, 1, 0], [1, 1, 0]],         // Z형 지그재그
+    [[1, 1, 1], [1, 1, 1]],                    // 2×3 직사각형
   ],
+  // Hard: 6~9칸 대형 복합 도형
   hard: [
-    [[1, 1, 1], [1, 1, 1], [1, 1, 1]], // 3x3 Solid
-    [[1, 1, 1, 1, 1]], // 1x5
-    [[1], [1], [1], [1], [1]], // 5x1
-    [[1, 1, 1, 1], [1, 1, 1, 1]], // 2x4 Solid
-    [[1, 1, 1], [1, 0, 0], [1, 0, 0]], // Big L
-    [[1, 1, 1], [0, 0, 1], [0, 0, 1]], // Big J
-    [[0, 1, 0], [1, 1, 1], [0, 1, 0]], // Plus (+)
-    [[1, 0, 1], [1, 0, 1], [1, 1, 1]], // Large U
-    [[1, 1, 1], [1, 0, 1], [1, 0, 1]], // Inverted U
-    [[1, 1, 0], [0, 1, 0], [0, 1, 1]], // Stair case
-    [[1, 1, 1], [0, 1, 0], [0, 1, 0]], // Big T
-    [[1, 1, 1], [1, 1, 1]], // 2x3 Solid
-  ]
+    [[1, 1, 1, 1], [1, 1, 1, 1]],             // 2×4 직사각형
+    [[1, 1, 1], [1, 1, 1], [1, 1, 1]],         // 3×3 정사각형
+    [[1, 0], [1, 0], [1, 0], [1, 1]],          // 대형 L
+    [[0, 1], [0, 1], [0, 1], [1, 1]],          // 대형 J
+    [[1, 1, 1], [1, 0, 0], [1, 0, 0]],         // 코너 L
+    [[1, 1, 1], [0, 0, 1], [0, 0, 1]],         // 코너 J
+    [[1, 0, 1], [1, 0, 1], [1, 1, 1]],         // 대형 U
+    [[1, 1, 1, 1, 1], [0, 0, 1, 0, 0]],        // 대형 T (가로)
+    [[0, 1, 0], [0, 1, 0], [1, 1, 1], [0, 1, 0]], // 대형 T (세로)
+    [[1, 0, 0], [1, 1, 0], [0, 1, 1], [0, 0, 1]], // 대각 계단
+  ],
 };
 
 const BLOCK_COLORS = ["red", "orange", "yellow", "green", "blue", "purple", "pink", "cyan"];
@@ -68,23 +89,17 @@ function updateBlockblastScoreDisplay() {
   blockblastBestScoreEl.textContent = blockblastState.bestScore;
 }
 
-/** 보드 초기화 및 렌더링 */
+/** 보드 렌더링 (innerHTML 일괄 처리로 성능 개선) */
 function renderBlockblastBoard() {
-  blockblastBoardEl.innerHTML = "";
-  for (let r = 0; r < BLOCKBLAST_BOARD_SIZE; r++) {
-    for (let c = 0; c < BLOCKBLAST_BOARD_SIZE; c++) {
-      const cell = document.createElement("div");
-      cell.className = "blockblast-cell";
+  let html = "";
+  for (let r = 0; r < BLOCKBLAST_BOARD_SIZE; r += 1) {
+    for (let c = 0; c < BLOCKBLAST_BOARD_SIZE; c += 1) {
       const color = blockblastState.board[r][c];
-      if (color) {
-        cell.classList.add("filled");
-        cell.classList.add(`block-color-${color}`);
-      }
-      cell.dataset.row = r;
-      cell.dataset.col = c;
-      blockblastBoardEl.appendChild(cell);
+      const colorClass = color ? ` filled block-color-${color}` : "";
+      html += `<div class="blockblast-cell${colorClass}" data-row="${r}" data-col="${c}"></div>`;
     }
   }
+  blockblastBoardEl.innerHTML = html;
 }
 
 /** 블록 조각들 렌더링 */
@@ -106,91 +121,98 @@ function renderBlockblastPieces() {
       });
     });
 
-    // 드래그 이벤트 등록
     initPieceDragEvents(pieceEl, piece, index);
     blockblastPiecesEl.appendChild(pieceEl);
   });
 }
 
-// 드래그 중인 요소를 추적하여 다중 선택 방지
+// 드래그 상태 (전역 — 한 번에 하나의 조각만 조작 가능)
 let activeDragElement = null;
+let activeDragPiece = null;
+let activeDragIndex = null;
+let activeDragOffsetX = 0;
+let activeDragOffsetY = 0;
+const DRAG_VISUAL_OFFSET_Y = 40;
 
-/** 피스 드래그 이벤트 초기화 */
+function updateDragElementPosition(element, clientX, clientY) {
+  const targetX = clientX - activeDragOffsetX;
+  const targetY = clientY - activeDragOffsetY - DRAG_VISUAL_OFFSET_Y;
+  element.style.left = "0px";
+  element.style.top = "0px";
+  element.style.transform = `translate(${targetX}px, ${targetY}px) scale(1.0)`;
+}
+
+function handleDragMove(e) {
+  if (!activeDragElement) return;
+  if (e.cancelable) e.preventDefault();
+  const touch = e.type === "touchmove" ? e.touches[0] : e;
+  updateDragElementPosition(activeDragElement, touch.clientX, touch.clientY);
+  updatePlacementPreview(
+    activeDragElement,
+    activeDragPiece,
+    touch.clientX,
+    touch.clientY - DRAG_VISUAL_OFFSET_Y,
+    activeDragOffsetX,
+    activeDragOffsetY
+  );
+}
+
+function handleDragEnd(e) {
+  if (!activeDragElement) return;
+  const touch = e.type === "touchend" ? e.changedTouches[0] : e;
+  const finalX = touch.clientX;
+  const finalY = touch.clientY - DRAG_VISUAL_OFFSET_Y;
+
+  // activeDragElement 해제 전에 값 복사
+  const el = activeDragElement;
+  const piece = activeDragPiece;
+  const index = activeDragIndex;
+  const offsetX = activeDragOffsetX;
+  const offsetY = activeDragOffsetY;
+
+  activeDragElement = null;
+  el.classList.remove("dragging");
+  el.style.left = "";
+  el.style.top = "";
+  el.style.transform = "";
+  document.body.style.overflow = "";
+
+  const pos = calculateBoardPosition(piece, finalX, finalY, offsetX, offsetY);
+  if (pos && canPlacePiece(pos.row, pos.col, piece.shape)) {
+    placePiece(pos.row, pos.col, piece, index);
+  } else {
+    clearPreview();
+  }
+}
+
+// 전역 드래그 핸들러를 한 번만 등록 (renderBlockblastPieces 호출 시 누적 방지)
+window.addEventListener("mousemove", handleDragMove);
+window.addEventListener("mouseup", handleDragEnd);
+window.addEventListener("touchmove", handleDragMove, { passive: false });
+window.addEventListener("touchend", handleDragEnd);
+
+/** 피스 드래그 이벤트 초기화 (mousedown/touchstart만 엘리먼트에 등록) */
 function initPieceDragEvents(el, piece, index) {
-  let dragOffsetX, dragOffsetY;
-  const VISUAL_OFFSET_Y = 40; // 손가락 위로 살짝만 올림
-
   const onStart = (e) => {
-    // 이미 다른 조각을 드래그 중이거나 게임 오버면 무시
     if (activeDragElement || blockblastState.gameOver) return;
-    
-    // 이벤트 전파 차단 및 기본 동작 방지
     e.stopPropagation();
     if (e.cancelable) e.preventDefault();
 
     const touch = e.type === "touchstart" ? e.touches[0] : e;
-    
     const rect = el.getBoundingClientRect();
-    dragOffsetX = touch.clientX - rect.left;
-    dragOffsetY = touch.clientY - rect.top;
-    
-    activeDragElement = el; // 현재 조작 요소를 전역에 등록
+    activeDragOffsetX = touch.clientX - rect.left;
+    activeDragOffsetY = touch.clientY - rect.top;
+    activeDragPiece = piece;
+    activeDragIndex = index;
+    activeDragElement = el;
+
     el.classList.add("dragging");
-    
-    updateElementPosition(el, touch.clientX, touch.clientY);
+    updateDragElementPosition(el, touch.clientX, touch.clientY);
     document.body.style.overflow = "hidden";
   };
 
-  const onMove = (e) => {
-    // 현재 조작 중인 요소가 아니면 무시
-    if (!activeDragElement || activeDragElement !== el) return;
-    
-    const touch = e.type === "touchmove" ? e.touches[0] : e;
-    updateElementPosition(el, touch.clientX, touch.clientY);
-    
-    updatePlacementPreview(el, piece, touch.clientX, touch.clientY - VISUAL_OFFSET_Y, dragOffsetX, dragOffsetY);
-  };
-
-  const onEnd = (e) => {
-    if (!activeDragElement || activeDragElement !== el) return;
-    
-    // 상태 초기화 전 데이터 추출
-    const touch = e.type === "touchend" ? e.changedTouches[0] : e;
-    const finalX = touch.clientX;
-    const finalY = touch.clientY - VISUAL_OFFSET_Y;
-
-    // 조작 상태 즉시 해제 (다중 선택 방지)
-    activeDragElement = null;
-    el.classList.remove("dragging");
-    el.style.left = "";
-    el.style.top = "";
-    el.style.transform = "";
-    document.body.style.overflow = "";
-
-    const pos = calculateBoardPosition(piece, finalX, finalY, dragOffsetX, dragOffsetY);
-    if (pos && canPlacePiece(pos.row, pos.col, piece.shape)) {
-      placePiece(pos.row, pos.col, piece, index);
-    } else {
-      clearPreview();
-    }
-  };
-
-  function updateElementPosition(element, x, y) {
-    const targetX = x - dragOffsetX;
-    const targetY = y - dragOffsetY - VISUAL_OFFSET_Y;
-    element.style.left = "0px";
-    element.style.top = "0px";
-    // translate와 scale을 합쳐서 설정 (CSS 충돌 방지)
-    element.style.transform = `translate(${targetX}px, ${targetY}px) scale(1.0)`;
-  }
-
   el.addEventListener("mousedown", onStart);
-  window.addEventListener("mousemove", onMove);
-  window.addEventListener("mouseup", onEnd);
-
   el.addEventListener("touchstart", onStart, { passive: false });
-  window.addEventListener("touchmove", onMove, { passive: false });
-  window.addEventListener("touchend", onEnd);
 }
 
 /** 현재 드래그 중인 위치를 보드 좌표로 계산 */
@@ -198,7 +220,6 @@ function calculateBoardPosition(piece, clientX, clientY, dragOffsetX, dragOffset
   const boardRect = blockblastBoardEl.getBoundingClientRect();
   const cellSize = boardRect.width / BLOCKBLAST_BOARD_SIZE;
 
-  // 클릭한 지점이 보드 위의 어느 셀인지 계산하고, 거기서 오프셋을 빼서 블록의 시작 좌표(row, col) 산출
   const pieceTopLeftX = clientX - dragOffsetX;
   const pieceTopLeftY = clientY - dragOffsetY;
 
@@ -217,8 +238,8 @@ function updatePlacementPreview(el, piece, clientX, clientY, dragOffsetX, dragOf
   clearPreview();
   const pos = calculateBoardPosition(piece, clientX, clientY, dragOffsetX, dragOffsetY);
   if (pos && canPlacePiece(pos.row, pos.col, piece.shape)) {
-    for (let r = 0; r < piece.shape.length; r++) {
-      for (let c = 0; c < piece.shape[0].length; c++) {
+    for (let r = 0; r < piece.shape.length; r += 1) {
+      for (let c = 0; c < piece.shape[0].length; c += 1) {
         if (piece.shape[r][c]) {
           const boardCell = blockblastBoardEl.querySelector(`[data-row="${pos.row + r}"][data-col="${pos.col + c}"]`);
           if (boardCell) {
@@ -240,8 +261,8 @@ function clearPreview() {
 
 /** 블록 배치 가능 여부 체크 */
 function canPlacePiece(row, col, shape) {
-  for (let r = 0; r < shape.length; r++) {
-    for (let c = 0; c < shape[0].length; c++) {
+  for (let r = 0; r < shape.length; r += 1) {
+    for (let c = 0; c < shape[0].length; c += 1) {
       if (shape[r][c]) {
         if (blockblastState.board[row + r][col + c]) return false;
       }
@@ -252,8 +273,8 @@ function canPlacePiece(row, col, shape) {
 
 /** 블록 배치 실행 */
 function placePiece(row, col, piece, index) {
-  for (let r = 0; r < piece.shape.length; r++) {
-    for (let c = 0; c < piece.shape[0].length; c++) {
+  for (let r = 0; r < piece.shape.length; r += 1) {
+    for (let c = 0; c < piece.shape[0].length; c += 1) {
       if (piece.shape[r][c]) {
         blockblastState.board[row + r][col + c] = piece.color;
       }
@@ -262,20 +283,18 @@ function placePiece(row, col, piece, index) {
 
   piece.placed = true;
   blockblastState.score += countFilledCells(piece.shape);
-  
+
   clearPreview();
   checkAndClearLines();
   updateBlockblastScoreDisplay();
   renderBlockblastBoard();
 
-  // 모든 피스를 사용했는지 체크
   if (blockblastState.pieces.every(p => p.placed)) {
     generateNewPieces();
   }
 
   renderBlockblastPieces();
-  
-  // 게임 오버 체크
+
   if (isGameOver()) {
     handleBlockblastGameOver();
   }
@@ -287,20 +306,18 @@ function countFilledCells(shape) {
 
 /** 가득 찬 행과 열을 찾아 제거 */
 function checkAndClearLines() {
-  let rowsToClear = [];
-  let colsToClear = [];
+  const rowsToClear = [];
+  const colsToClear = [];
 
-  // 행 체크
-  for (let r = 0; r < BLOCKBLAST_BOARD_SIZE; r++) {
+  for (let r = 0; r < BLOCKBLAST_BOARD_SIZE; r += 1) {
     if (blockblastState.board[r].every(cell => cell !== 0)) {
       rowsToClear.push(r);
     }
   }
 
-  // 열 체크
-  for (let c = 0; c < BLOCKBLAST_BOARD_SIZE; c++) {
+  for (let c = 0; c < BLOCKBLAST_BOARD_SIZE; c += 1) {
     let full = true;
-    for (let r = 0; r < BLOCKBLAST_BOARD_SIZE; r++) {
+    for (let r = 0; r < BLOCKBLAST_BOARD_SIZE; r += 1) {
       if (blockblastState.board[r][c] === 0) {
         full = false;
         break;
@@ -311,30 +328,25 @@ function checkAndClearLines() {
 
   if (rowsToClear.length > 0 || colsToClear.length > 0) {
     const totalLines = rowsToClear.length + colsToClear.length;
-    
-    // 보드 진동 효과 추가
+
     blockblastBoardEl.classList.remove("board-impact");
-    void blockblastBoardEl.offsetWidth; // reflow 트리거
+    void blockblastBoardEl.offsetWidth;
     blockblastBoardEl.classList.add("board-impact");
 
-    // 점수 체계 상향: 줄당 1000점 + 콤보 보너스
     blockblastState.combo += 1;
     const baseScore = totalLines * 1000;
     const comboBonus = (blockblastState.combo > 1) ? (blockblastState.combo * 500) : 0;
     const addedScore = baseScore + comboBonus;
-    
+
     blockblastState.score += addedScore;
-    
+
     if (blockblastState.combo > 1) {
       blockblastMessageEl.textContent = t("blockblast.combo", { n: blockblastState.combo });
     }
 
-    // 애니메이션 실행 및 데이터 제거
     rowsToClear.forEach(r => {
-      // 행의 중앙 즈음에 점수 팝업 표시 (먼저 실행)
       showScorePopup(r, 4, 1000 + (blockblastState.combo > 1 ? 500 : 0));
-      
-      for (let c = 0; c < BLOCKBLAST_BOARD_SIZE; c++) {
+      for (let c = 0; c < BLOCKBLAST_BOARD_SIZE; c += 1) {
         const color = blockblastState.board[r][c];
         blockblastState.board[r][c] = 0;
         animateCellClear(r, c, color);
@@ -342,13 +354,10 @@ function checkAndClearLines() {
     });
 
     colsToClear.forEach(c => {
-      // 열의 중앙 즈음에 점수 팝업 표시 (행과 겹치지 않게)
       if (!rowsToClear.includes(4)) {
         showScorePopup(4, c, 1000 + (blockblastState.combo > 1 ? 500 : 0));
       }
-      
-      for (let r = 0; r < BLOCKBLAST_BOARD_SIZE; r++) {
-        // 이미 0이어도 애니메이션을 위해 색상이 있었던 경우만 처리
+      for (let r = 0; r < BLOCKBLAST_BOARD_SIZE; r += 1) {
         if (blockblastState.board[r][c] !== 0) {
           const color = blockblastState.board[r][c];
           blockblastState.board[r][c] = 0;
@@ -365,38 +374,33 @@ function checkAndClearLines() {
 function animateCellClear(r, c, originalColor) {
   const cell = blockblastBoardEl.querySelector(`[data-row="${r}"][data-col="${c}"]`);
   if (cell) {
-    // 색상을 명시적으로 다시 입히고 애니메이션 클래스 추가
     if (originalColor) {
       cell.classList.add(`block-color-${originalColor}`);
       cell.classList.add("filled");
     }
     cell.classList.add("clearing");
-    
-    // 애니메이션 종료 후 클래스 정리
+
     setTimeout(() => {
-      cell.className = "blockblast-cell"; // 모든 클래스 초기화
+      cell.className = "blockblast-cell";
     }, 700);
   }
 }
 
 /** 점수 팝업 애니메이션 표시 */
 function showScorePopup(row, col, score) {
-  // 보드 내 해당 셀의 절대 좌표 계산
   const cellEl = blockblastBoardEl.querySelector(`[data-row="${row}"][data-col="${col}"]`);
   if (!cellEl) return;
-  
+
   const rect = cellEl.getBoundingClientRect();
   const popup = document.createElement("div");
   popup.className = "score-popup";
   popup.textContent = `+${score}`;
-  
-  // Viewport(화면) 기준 위치 설정 (레이어 이슈 해결)
+
   popup.style.left = `${rect.left + rect.width / 2}px`;
   popup.style.top = `${rect.top}px`;
-  
-  document.body.appendChild(popup); // 보드가 아닌 바디에 직접 추가
-  
-  // 애니메이션 후 제거
+
+  document.body.appendChild(popup);
+
   setTimeout(() => popup.remove(), 1000);
 }
 
@@ -406,10 +410,10 @@ function isGameOver() {
   if (remainingPieces.length === 0) return false;
 
   for (const piece of remainingPieces) {
-    for (let r = 0; r <= BLOCKBLAST_BOARD_SIZE - piece.shape.length; r++) {
-      for (let c = 0; c <= BLOCKBLAST_BOARD_SIZE - piece.shape[0].length; c++) {
+    for (let r = 0; r <= BLOCKBLAST_BOARD_SIZE - piece.shape.length; r += 1) {
+      for (let c = 0; c <= BLOCKBLAST_BOARD_SIZE - piece.shape[0].length; c += 1) {
         if (canPlacePiece(r, c, piece.shape)) {
-          return false; // 놓을 수 있는 곳이 하나라도 있으면 게임 계속
+          return false;
         }
       }
     }
@@ -425,17 +429,13 @@ function blockblastRandomInt(min, max) {
 function generateNewPieces() {
   const pool = getPiecePool(blockblastState.difficultyKey);
   blockblastState.pieces = [];
-  
-  // 가용한 색상 복사
+
   let availableColors = [...BLOCK_COLORS];
-  
-  for (let i = 0; i < 3; i++) {
+
+  for (let i = 0; i < 3; i += 1) {
     const shape = pool[blockblastRandomInt(0, pool.length - 1)];
-    
-    // 무작위 색상 선택 및 제거 (서로 다른 색상을 갖도록)
     const colorIndex = blockblastRandomInt(0, availableColors.length - 1);
     const color = availableColors.splice(colorIndex, 1)[0];
-    
     blockblastState.pieces.push({ shape, color, placed: false });
   }
 }
@@ -449,7 +449,6 @@ function getPiecePool(difficulty) {
 
 /** 게임 시작 */
 function startBlockblastGame(difficultyKey) {
-  // 앱 폭 확장
   const appEl = document.querySelector(".app");
   if (appEl) appEl.classList.add("app--blockblast");
 
@@ -476,12 +475,11 @@ function startBlockblastGame(difficultyKey) {
 function handleBlockblastGameOver() {
   blockblastState.gameOver = true;
   blockblastMessageEl.textContent = t("blockblast.gameOver");
-  
+
   lastResultGameId = "blockblast";
-  lastResultWon = true; // 블록 블래스트는 '승리' 개념보다 기록 갱신
+  lastResultWon = true;
 
   setTimeout(() => {
-    // 앱 폭 원복 (결과 화면은 좁게)
     const appEl = document.querySelector(".app");
     if (appEl) appEl.classList.remove("app--blockblast");
 
@@ -491,7 +489,7 @@ function handleBlockblastGameOver() {
       t(`blockblast.difficulty.${blockblastState.difficultyKey}`),
       t("blockblast.score") + " " + blockblastState.score
     ];
-    
+
     const recordResult = tryUpdateRecord({
       gameId: "blockblast",
       difficultyKey: blockblastState.difficultyKey,
@@ -499,13 +497,12 @@ function handleBlockblastGameOver() {
       value: blockblastState.score,
       metric: "score",
     });
-    
+
     resultDetail.textContent = appendRecordToResult(details, recordResult).join(" · ");
     showScreen("result");
   }, 1500);
 }
 
-// 초기화 시 내비게이션 버튼 리스너 등록
 document.addEventListener("DOMContentLoaded", () => {
   const resetAppWidth = () => {
     const appEl = document.querySelector(".app");

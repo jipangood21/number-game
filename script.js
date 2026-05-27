@@ -23,6 +23,12 @@ const GAMES = [
     descriptionKey: "game.blockblast.description",
     available: true,
   },
+  {
+    id: "brickbreaker",
+    nameKey: "game.brickbreaker.name",
+    descriptionKey: "game.brickbreaker.description",
+    available: true,
+  },
 ];
 
 const SUDOKU_DIFFICULTIES = [
@@ -118,6 +124,7 @@ let sudokuState = {
 };
 
 let sudokuTimerId = null;
+let sudokuCellEls = null; // 셀 DOM 참조 캐시 (최초 1회 생성 후 재사용)
 
 let blockblastState = {
   board: [],
@@ -138,9 +145,11 @@ const screens = {
   baseballPlay: document.getElementById("screen-baseball-play"),
   sudokuSelect: document.getElementById("screen-sudoku-select"),
   sudokuPlay: document.getElementById("screen-sudoku-play"),
-  blockblastSelect: document.getElementById("screen-blockblast-select"),
-  blockblastPlay: document.getElementById("screen-blockblast-play"),
-  result: document.getElementById("screen-result"),
+  blockblastSelect:    document.getElementById("screen-blockblast-select"),
+  blockblastPlay:      document.getElementById("screen-blockblast-play"),
+  brickbreakerSelect:  document.getElementById("screen-brickbreaker-select"),
+  brickbreakerPlay:    document.getElementById("screen-brickbreaker-play"),
+  result:              document.getElementById("screen-result"),
 };
 
 const appEl = document.querySelector(".app");
@@ -202,8 +211,11 @@ const blockblastCurrentScoreEl = document.getElementById("blockblast-current-sco
 const blockblastBestScoreEl = document.getElementById("blockblast-best-score");
 const blockblastMessageEl = document.getElementById("blockblast-message");
 const blockblastDifficultyBadge = document.getElementById("blockblast-difficulty-badge");
-const btnBlockblastBackHome = document.getElementById("btn-blockblast-back-home");
-const btnBlockblastPlayBackHome = document.getElementById("btn-blockblast-play-back-home");
+const btnBlockblastBackHome      = document.getElementById("btn-blockblast-back-home");
+const btnBlockblastPlayBackHome  = document.getElementById("btn-blockblast-play-back-home");
+const btnBrickbreakerBackHome    = document.getElementById("btn-brickbreaker-back-home");
+const btnBrickbreakerPlayBackHome = document.getElementById("btn-brickbreaker-play-back-home");
+const btnBBPause                 = document.getElementById("btn-bb-pause");
 
 function getActiveScreenName() {
   return Object.entries(screens).find(([, el]) => el.classList.contains("active"))?.[0];
@@ -257,7 +269,7 @@ function showScreen(name) {
 function goHome() {
   stopBaseballTimer();
   stopSudokuTimer();
-  // blockblast 관련 타이머가 생긴다면 여기에 추가
+  if (typeof exitBrickbreakerGame === "function") exitBrickbreakerGame();
   currentGameId = null;
   selectedDigit = null;
   setHeader("home");
@@ -291,6 +303,13 @@ function goBlockblastGame() {
   setHeader("blockblast");
   showScreen("blockblastSelect");
   renderBlockblastDifficultySelect();
+}
+
+function goBrickbreakerGame() {
+  currentGameId = "brickbreaker";
+  setHeader("brickbreaker");
+  showScreen("brickbreakerSelect");
+  renderBrickbreakerDifficultySelect();
 }
 
 function randomInt(min, max) {
@@ -373,13 +392,17 @@ function renderHome() {
     `;
   }).join("");
 
+  const gameHandlers = {
+    guess:        goGuessGame,
+    baseball:     goBaseballGame,
+    sudoku:       goSudokuGame,
+    blockblast:   goBlockblastGame,
+    brickbreaker: goBrickbreakerGame,
+  };
+
   gameListEl.querySelectorAll("[data-game]").forEach((btn) => {
     btn.addEventListener("click", () => {
-      if (btn.dataset.game === "guess") goGuessGame();
-      if (btn.dataset.game === "baseball") goBaseballGame();
-      if (btn.dataset.game === "sudoku") goSudokuGame();
-      if (btn.dataset.game === "blockblast") goBlockblastGame();
-      if (btn.dataset.game === "blockblast") goBlockblastGame();
+      gameHandlers[btn.dataset.game]?.();
     });
   });
 }
@@ -463,7 +486,20 @@ function handleSudokuWrongAnswer() {
 /** 스도쿠 난이도 선택 화면 렌더링 */
 function renderSudokuDifficultySelect() {
   updateSudokuInvincibleButtons();
-  sudokuDifficultyOptionsEl.innerHTML = SUDOKU_DIFFICULTIES.map((diff) => {
+
+  // 저장 데이터가 있으면 '이어하기' 버튼을 최상단에 표시
+  const save = loadSudokuSave();
+  const continueHtml = save
+    ? `<button type="button" class="option-btn option-btn--highlight" id="btn-sudoku-continue">
+         <span class="label">${t("sudoku.continue")}</span>
+         <span class="meta-wrap"><span class="meta">${t("sudoku.savedAt", {
+           diff: t(`difficulty.${save.difficultyKey}`),
+           n: save.elapsedSeconds,
+         })}</span></span>
+       </button>`
+    : "";
+
+  sudokuDifficultyOptionsEl.innerHTML = continueHtml + SUDOKU_DIFFICULTIES.map((diff) => {
     const recordLine = getRecordMetaLine("sudoku", diff.key, null);
     return `
     <button type="button" class="option-btn" data-difficulty="${diff.key}">
@@ -476,7 +512,12 @@ function renderSudokuDifficultySelect() {
   `;
   }).join("");
 
-  sudokuDifficultyOptionsEl.querySelectorAll(".option-btn").forEach((btn) => {
+  if (save) {
+    document.getElementById("btn-sudoku-continue")
+      ?.addEventListener("click", () => resumeSudokuGame(save));
+  }
+
+  sudokuDifficultyOptionsEl.querySelectorAll("[data-difficulty]").forEach((btn) => {
     btn.addEventListener("click", () => startSudokuGame(btn.dataset.difficulty));
   });
 }
@@ -505,45 +546,64 @@ function initSudokuNumpad() {
   sudokuNumpadEl.appendChild(eraseBtn);
 }
 
-/** 스도쿠 게임판 그리드 렌더링 */
-function renderSudokuGrid() {
-  const conflicts = getAllConflicts(sudokuState.user);
-  const selectedValue = sudokuState.selectedCell !== null ? sudokuState.user[sudokuState.selectedCell] : null;
+/** 스도쿠 그리드 DOM을 최초 1회 구성하고 셀 참조 캐시 */
+function buildSudokuGrid() {
+  sudokuGridEl.innerHTML = "";
+  sudokuCellEls = [];
+  for (let idx = 0; idx < SUDOKU_CELLS; idx += 1) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    const valueSpan = document.createElement("span");
+    valueSpan.className = "sudoku-value";
+    const notesDiv = document.createElement("div");
+    notesDiv.className = "sudoku-notes";
+    btn.appendChild(valueSpan);
+    btn.appendChild(notesDiv);
+    btn.addEventListener("click", () => selectSudokuCell(idx));
+    sudokuGridEl.appendChild(btn);
+    sudokuCellEls.push(btn);
+  }
+}
 
-  sudokuGridEl.innerHTML = Array.from({ length: SUDOKU_CELLS }, (_, idx) => {
-    const fixed = sudokuState.fixed[idx];
+/**
+ * 스도쿠 그리드 업데이트
+ * - 기존 DOM 재사용으로 전체 innerHTML 재생성 방지
+ * - 첫 호출 시에만 buildSudokuGrid()로 DOM 구성
+ */
+function renderSudokuGrid() {
+  if (!sudokuCellEls) buildSudokuGrid();
+
+  const conflicts = getAllConflicts(sudokuState.user);
+  const selectedValue = sudokuState.selectedCell !== null
+    ? sudokuState.user[sudokuState.selectedCell]
+    : null;
+
+  for (let idx = 0; idx < SUDOKU_CELLS; idx += 1) {
+    const btn = sudokuCellEls[idx];
     const value = sudokuState.user[idx];
     const notes = sudokuState.notes[idx];
     const showNotes = !value && notes.size > 0;
-    const noteSpans = formatNotesDisplay(notes)
-      .map((n) => `<span>${n}</span>`)
-      .join("");
 
-    const classes = ["sudoku-cell"];
-    if (fixed) classes.push("fixed");
-    if (sudokuState.selectedCell === idx) classes.push("selected");
-    
-    // 동일 숫자 강조 로직 추가
-    if (value && selectedValue && value === selectedValue && idx !== sudokuState.selectedCell) {
-      classes.push("same-number");
+    // 클래스를 문자열로 직접 조합 (classList.toggle 반복 대비 성능 우위)
+    let cls = "sudoku-cell";
+    if (sudokuState.fixed[idx])                                                cls += " fixed";
+    if (sudokuState.selectedCell === idx)                                       cls += " selected";
+    if (value && selectedValue && value === selectedValue && idx !== sudokuState.selectedCell) cls += " same-number";
+    if (conflicts.has(idx))                                                    cls += " conflict";
+    if (value && value !== sudokuState.solution[idx])                          cls += " wrong-answer";
+    if (sudokuState.hinted[idx])                                               cls += " hinted";
+    if (showNotes)                                                             cls += " show-notes";
+    btn.className = cls;
+
+    btn.querySelector(".sudoku-value").textContent = value || "";
+
+    const notesDiv = btn.querySelector(".sudoku-notes");
+    if (showNotes) {
+      notesDiv.innerHTML = formatNotesDisplay(notes).map(n => `<span>${n}</span>`).join("");
+    } else if (notesDiv.innerHTML !== "") {
+      notesDiv.innerHTML = "";
     }
-
-    if (conflicts.has(idx)) classes.push("conflict");
-    if (value && value !== sudokuState.solution[idx]) classes.push("wrong-answer");
-    if (sudokuState.hinted[idx]) classes.push("hinted");
-    if (showNotes) classes.push("show-notes");
-
-    return `
-      <button type="button" class="${classes.join(" ")}" data-idx="${idx}">
-        <span class="sudoku-value">${value || ""}</span>
-        <div class="sudoku-notes">${noteSpans}</div>
-      </button>
-    `;
-  }).join("");
-
-  sudokuGridEl.querySelectorAll(".sudoku-cell").forEach((btn) => {
-    btn.addEventListener("click", () => selectSudokuCell(Number(btn.dataset.idx)));
-  });
+  }
 }
 
 /** 스도쿠 특정 셀 선택 */
@@ -602,6 +662,7 @@ function applySudokuNumber(num) {
     setSudokuMessage("");
   }
 
+  saveSudokuState(); // 매 입력 후 자동저장
   checkSudokuWin();
 }
 
@@ -622,6 +683,7 @@ function eraseSudokuCell() {
   sudokuState.hinted[idx] = false;
   setSudokuMessage("");
   renderSudokuGrid();
+  saveSudokuState(); // 지우기 후 자동저장
 }
 
 /** 스도쿠 힌트 요청 및 자동 입력 */
@@ -639,6 +701,7 @@ function requestSudokuHint() {
   sudokuState.selectedCell = idx;
   setSudokuMessage("sudoku.hint.done");
   renderSudokuGrid();
+  saveSudokuState(); // 힌트 사용 후 자동저장
   checkSudokuWin();
 }
 
@@ -688,6 +751,7 @@ function startSudokuGame(difficultyKey) {
 /** 스도쿠 승리 결과 화면 표시 */
 function showSudokuResult() {
   stopSudokuTimer();
+  clearSudokuSave(); // 완료 시 세이브 삭제
   lastResultGameId = "sudoku";
   lastResultWon = true;
 
@@ -715,6 +779,7 @@ function showSudokuResult() {
 /** 스도쿠 실패(하트 0) 화면 표시 */
 function showSudokuFail() {
   stopSudokuTimer();
+  clearSudokuSave(); // 실패 시 세이브 삭제
   lastResultGameId = "sudoku";
   lastResultWon = false;
 
@@ -1066,9 +1131,6 @@ function refreshCurrentScreen() {
     updateAttemptsDisplay();
   }
   if (screen === "baseballSelect") renderBaseballDigitSelect();
-  if (screen === "baseballSelect") {
-    updateBaseballDuplicateButton();
-  }
   if (screen === "baseballPlay" && baseballState.answer) {
     baseballRangeBadge.textContent = getDigitLabel(baseballState.digits);
     baseballRuleDesc.textContent = getBaseballRuleDescText();
@@ -1097,12 +1159,17 @@ function refreshCurrentScreen() {
     renderBlockblastBoard();
     renderBlockblastPieces();
   }
+  if (screen === "brickbreakerSelect") {
+    renderBrickbreakerDifficultySelect();
+  }
   if (screen === "result" && lastResultWon !== null) {
     if (lastResultGameId === "baseball") showBaseballResult();
     else if (lastResultGameId === "sudoku") {
       if (lastResultWon) showSudokuResult();
       else showSudokuFail();
-    } else showGuessResult(lastResultWon);
+    } else if (lastResultGameId !== "blockblast" && lastResultGameId !== "brickbreaker") {
+      showGuessResult(lastResultWon);
+    }
   }
 }
 
@@ -1110,6 +1177,9 @@ function refreshCurrentScreen() {
 function changeLanguage(lang) {
   setLanguage(lang);
   refreshCurrentScreen();
+  if (typeof refreshLeaderboardTranslations === "function") {
+    refreshLeaderboardTranslations();
+  }
 }
 
 // 횟수맞추기 정답 제출 이벤트 처리
@@ -1183,6 +1253,10 @@ btnReplay.addEventListener("click", () => {
     startBlockblastGame(blockblastState.difficultyKey);
     return;
   }
+  if (lastResultGameId === "brickbreaker") {
+    startBrickbreakerGame(bbState?.difficultyKey || "normal");
+    return;
+  }
   startGame(
     { digits: gameState.digits, minVal: gameState.minVal, maxVal: gameState.maxVal },
     gameState.difficultyKey
@@ -1199,6 +1273,11 @@ btnChangeDigit.addEventListener("click", () => {
   if (lastResultGameId === "sudoku") {
     showScreen("sudokuSelect");
     renderSudokuDifficultySelect();
+    return;
+  }
+  if (lastResultGameId === "brickbreaker") {
+    showScreen("brickbreakerSelect");
+    renderBrickbreakerDifficultySelect();
     return;
   }
   if (lastResultGameId === "blockblast") {
@@ -1288,6 +1367,12 @@ btnSudokuInvincibleSelect.addEventListener("click", toggleSudokuInvincibleMode);
 btnSudokuBackHome.addEventListener("click", goHome);
 btnSudokuPlayBackHome.addEventListener("click", goHome);
 
+btnBrickbreakerBackHome?.addEventListener("click", goHome);
+btnBrickbreakerPlayBackHome?.addEventListener("click", goHome);
+btnBBPause?.addEventListener("click", () => {
+  if (typeof bbTogglePause === "function") bbTogglePause();
+});
+
 btnBackDigit.addEventListener("click", () => {
   showScreen("select");
   renderDigitSelect();
@@ -1306,6 +1391,7 @@ document.documentElement.lang = getLanguage();
 initAuth();
 initProfile();
 initHomeNav();
+initLeaderboard();
 applyStaticTranslations();
 updateSudokuInvincibleButtons();
 updateBaseballDuplicateButton();

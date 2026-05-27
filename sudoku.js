@@ -63,30 +63,93 @@ function isValidPlacement(board, idx, num) {
   return true;
 }
 
-/** 백트래킹 알고리즘을 사용한 스도쿠 해법 탐색 */
-function solveSudoku(board) {
-  const empty = board.findIndex((v) => v === 0);
-  if (empty === -1) return true;
+/** 보드 상태로부터 행/열/박스 비트마스크 배열 구성 (O(81)) */
+function buildConstraintMasks(board) {
+  const rows = new Array(SUDOKU_SIZE).fill(0);
+  const cols = new Array(SUDOKU_SIZE).fill(0);
+  const boxes = new Array(SUDOKU_SIZE).fill(0);
+  for (let i = 0; i < SUDOKU_CELLS; i += 1) {
+    const v = board[i];
+    if (!v) continue;
+    const r = sudokuRow(i);
+    const c = sudokuCol(i);
+    const b = Math.floor(r / 3) * 3 + Math.floor(c / 3);
+    const bit = 1 << v;
+    rows[r] |= bit;
+    cols[c] |= bit;
+    boxes[b] |= bit;
+  }
+  return { rows, cols, boxes };
+}
 
-  const nums = shuffleArray([1, 2, 3, 4, 5, 6, 7, 8, 9]);
-  for (const num of nums) {
-    if (isValidPlacement(board, empty, num)) {
-      board[empty] = num;
-      if (solveSudoku(board)) return true;
-      board[empty] = 0;
+/**
+ * MRV(Minimum Remaining Values) + 비트마스크 백트래킹
+ * - 후보 수가 가장 적은 빈 칸을 먼저 시도 → 탐색 공간 대폭 축소
+ * - 비트 연산으로 유효성 검사 O(1) (기존 O(n) 루프 대체)
+ */
+function solveSudokuFast(board, rows, cols, boxes) {
+  let minCount = 10;
+  let bestIdx = -1;
+  let bestUsed = 0;
+
+  for (let i = 0; i < SUDOKU_CELLS; i += 1) {
+    if (board[i] !== 0) continue;
+    const r = sudokuRow(i);
+    const c = sudokuCol(i);
+    const b = Math.floor(r / 3) * 3 + Math.floor(c / 3);
+    const used = rows[r] | cols[c] | boxes[b];
+    let count = 0;
+    for (let n = 1; n <= 9; n += 1) {
+      if (!(used & (1 << n))) count += 1;
+    }
+    if (count === 0) return false; // 해당 칸에 놓을 수 없음 → 즉시 가지치기
+    if (count < minCount) {
+      minCount = count;
+      bestIdx = i;
+      bestUsed = used;
+      if (count === 1) break; // 후보 1개 → 더 탐색 불필요
     }
   }
+
+  if (bestIdx === -1) return true; // 빈 칸 없음 → 완성
+
+  const r = sudokuRow(bestIdx);
+  const c = sudokuCol(bestIdx);
+  const b = Math.floor(r / 3) * 3 + Math.floor(c / 3);
+
+  const candidates = [];
+  for (let n = 1; n <= 9; n += 1) {
+    if (!(bestUsed & (1 << n))) candidates.push(n);
+  }
+  shuffleArray(candidates); // 퍼즐 랜덤화를 위해 셔플
+
+  for (const num of candidates) {
+    const bit = 1 << num;
+    board[bestIdx] = num;
+    rows[r] |= bit;
+    cols[c] |= bit;
+    boxes[b] |= bit;
+
+    if (solveSudokuFast(board, rows, cols, boxes)) return true;
+
+    board[bestIdx] = 0;
+    rows[r] &= ~bit;
+    cols[c] &= ~bit;
+    boxes[b] &= ~bit;
+  }
+
   return false;
 }
 
-/** 정답이 채워진 스도쿠 판 생성 */
+/** 정답이 채워진 스도쿠 판 생성 (최적화 버전) */
 function generateSolvedBoard() {
   const board = Array(SUDOKU_CELLS).fill(0);
   const firstRow = shuffleArray([1, 2, 3, 4, 5, 6, 7, 8, 9]);
   for (let c = 0; c < SUDOKU_SIZE; c += 1) {
     board[sudokuIdx(0, c)] = firstRow[c];
   }
-  solveSudoku(board);
+  const { rows, cols, boxes } = buildConstraintMasks(board);
+  solveSudokuFast(board, rows, cols, boxes);
   return board;
 }
 
@@ -191,4 +254,93 @@ function formatNotesDisplay(notesSet) {
     arr[n - 1] = String(n);
   });
   return arr;
+}
+
+// ── 저장 / 불러오기 ──────────────────────────────────────────
+
+const SUDOKU_SAVE_KEY = "ng_sudoku_save";
+
+function getSudokuSaveKey() {
+  const userId = getCurrentUserId();
+  return userId ? `${SUDOKU_SAVE_KEY}_${userId}` : `${SUDOKU_SAVE_KEY}_guest`;
+}
+
+/** 현재 게임 상태를 localStorage에 직렬화하여 저장 */
+function saveSudokuState() {
+  if (!sudokuState.solution.length) return;
+  const data = {
+    puzzle:        sudokuState.puzzle,
+    solution:      sudokuState.solution,
+    user:          sudokuState.user,
+    fixed:         sudokuState.fixed,
+    notes:         sudokuState.notes.map(s => [...s]), // Set → 배열
+    hinted:        sudokuState.hinted,
+    selectedCell:  sudokuState.selectedCell,
+    memoMode:      sudokuState.memoMode,
+    difficultyKey: sudokuState.difficultyKey,
+    elapsedSeconds:sudokuState.elapsedSeconds,
+    hintsUsed:     sudokuState.hintsUsed,
+    maxHearts:     sudokuState.maxHearts,
+    hearts:        sudokuState.hearts,
+    invincible:    sudokuState.invincible,
+    savedAt:       Date.now(),
+  };
+  try {
+    localStorage.setItem(getSudokuSaveKey(), JSON.stringify(data));
+  } catch { /* 저장 용량 초과 등 무시 */ }
+}
+
+/** localStorage에서 저장 데이터 복원 (없으면 null 반환) */
+function loadSudokuSave() {
+  try {
+    const raw = localStorage.getItem(getSudokuSaveKey());
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    data.notes = data.notes.map(arr => new Set(arr)); // 배열 → Set
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+/** 완료/실패 후 저장 데이터 삭제 */
+function clearSudokuSave() {
+  localStorage.removeItem(getSudokuSaveKey());
+}
+
+/** 저장된 상태에서 게임 재개 */
+function resumeSudokuGame(saveData) {
+  stopSudokuTimer();
+  sudokuState = {
+    puzzle:        saveData.puzzle,
+    solution:      saveData.solution,
+    user:          saveData.user,
+    fixed:         saveData.fixed,
+    notes:         saveData.notes,
+    hinted:        saveData.hinted,
+    selectedCell:  saveData.selectedCell,
+    memoMode:      saveData.memoMode,
+    difficultyKey: saveData.difficultyKey,
+    elapsedSeconds:saveData.elapsedSeconds,
+    hintsUsed:     saveData.hintsUsed,
+    maxHearts:     saveData.maxHearts,
+    hearts:        saveData.hearts,
+    invincible:    saveData.invincible,
+  };
+
+  initSudokuNumpad();
+  updateSudokuMemoButton();
+  updateSudokuInvincibleButtons();
+  updateSudokuHeartsDisplay();
+  updateSudokuStopwatchDisplay();
+
+  // 저장된 경과 시간부터 타이머 재개 (elapsedSeconds를 0으로 리셋하지 않음)
+  sudokuTimerId = setInterval(() => {
+    sudokuState.elapsedSeconds += 1;
+    updateSudokuStopwatchDisplay();
+  }, 1000);
+
+  setSudokuMessage("");
+  renderSudokuGrid();
+  showScreen("sudokuPlay");
 }

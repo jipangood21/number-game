@@ -26,7 +26,10 @@
         <div id="auth-bar" class="auth-bar">
           <div class="auth-status-row">
             <span id="auth-welcome" class="auth-welcome"></span>
-            <button type="button" id="btn-open-login" class="auth-btn" data-i18n-auth="auth.login">로그인</button>
+            <div class="auth-actions">
+              <button type="button" id="btn-open-leaderboard" class="auth-btn" data-i18n="leaderboard.btn">리더보드</button>
+              <button type="button" id="btn-open-login" class="auth-btn" data-i18n-auth="auth.login">로그인</button>
+            </div>
           </div>
         </div>
         <h2 data-i18n="home.selectGame">게임 선택</h2>
@@ -168,6 +171,45 @@
         <button type="button" id="btn-blockblast-play-back-home" class="btn-text" data-i18n="btn.backHome">← 홈으로</button>
       </section>
 
+      <section id="screen-brickbreaker-select" class="screen">
+        <h2 data-i18n="difficulty.select">난이도 선택</h2>
+        <div class="option-grid" id="brickbreaker-difficulty-options"></div>
+        <button type="button" id="btn-brickbreaker-back-home" class="btn-text" data-i18n="btn.backHome">← 홈으로</button>
+      </section>
+
+      <section id="screen-brickbreaker-play" class="screen">
+        <div class="game-info bb-hud">
+          <div>
+            <div class="score-display">
+              <span data-i18n="bb.score">점수:</span>
+              <span id="bb-score">0</span>
+            </div>
+            <div class="best-display">
+              <span data-i18n="bb.best">최고:</span>
+              <span id="bb-best">0</span>
+            </div>
+          </div>
+          <div class="game-info-right">
+            <div class="bb-level-row">
+              <span data-i18n="bb.level">레벨</span>&nbsp;<strong id="bb-level">1</strong>
+            </div>
+            <div id="bb-lives" class="bb-lives">♥♥♥</div>
+          </div>
+        </div>
+
+        <div class="bb-toolbar">
+          <button type="button" id="btn-bb-pause" class="toolbar-btn" data-i18n="bb.pause">일시정지</button>
+          <button type="button" id="btn-brickbreaker-play-back-home" class="toolbar-btn" data-i18n="btn.backHome">← 홈으로</button>
+        </div>
+
+        <div class="bb-canvas-wrap">
+          <canvas id="brickbreaker-canvas" width="480" height="600"></canvas>
+        </div>
+
+        <p id="brickbreaker-message" class="blockblast-message" aria-live="polite"></p>
+        <p class="bb-controls-hint" data-i18n="bb.controls"></p>
+      </section>
+
       <section id="screen-result" class="screen">
         <div class="result-card">
           <h2 id="result-title">정답입니다</h2>
@@ -176,6 +218,7 @@
         </div>
         <div class="result-actions">
           <button type="button" id="btn-replay" class="btn-primary" data-i18n="btn.replay">다시 하기</button>
+          <button type="button" id="btn-result-leaderboard" class="btn-secondary" data-i18n="leaderboard.btn">리더보드</button>
           <button type="button" id="btn-change-digit" class="btn-secondary" data-i18n="btn.restart">처음부터</button>
           <button type="button" id="btn-back-home-from-result" class="btn-secondary" data-i18n="btn.home">홈으로</button>
         </div>
@@ -268,6 +311,19 @@
     </div>
   </div>
 
+  <div id="leaderboard-modal" class="leaderboard-modal">
+    <div id="leaderboard-modal-backdrop" class="leaderboard-modal-backdrop"></div>
+    <div class="leaderboard-modal-panel">
+      <h2 class="leaderboard-modal-title" data-i18n="leaderboard.title">리더보드</h2>
+      <div id="leaderboard-game-tabs" class="lb-game-tabs"></div>
+      <div id="leaderboard-sub-tabs" class="lb-sub-tabs"></div>
+      <div id="leaderboard-list" class="lb-list"></div>
+      <div class="leaderboard-modal-actions">
+        <button type="button" id="leaderboard-close" class="btn-secondary" data-i18n="leaderboard.close">닫기</button>
+      </div>
+    </div>
+  </div>
+
   <div id="version-modal" class="version-modal">
     <div id="version-modal-backdrop" class="version-modal-backdrop"></div>
     <div class="version-modal-panel">
@@ -289,6 +345,8 @@
   <script src="baseball.js"></script>
   <script src="sudoku.js"></script>
   <script src="blockblast.js"></script>
+  <script src="brickbreaker.js"></script>
+  <script src="leaderboard.js"></script>
   <script src="profile.js"></script>
   <script src="script.js"></script>
 </body>

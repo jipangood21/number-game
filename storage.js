@@ -178,3 +178,17 @@ function saveRecordEntry(key, record) {
   data.records[key] = record;
   return saveCurrentUserData(data);
 }
+
+/** 모든 등록 유저의 프로필 + 기록 배열 반환 (리더보드용) */
+function getAllUsersRecords() {
+  const users = getUsers();
+  return Object.entries(users).map(([username, userInfo]) => {
+    const data = getUserData(userInfo.userId);
+    return {
+      userId:   userInfo.userId,
+      username,
+      nickname: data?.profile?.nickname || username,
+      records:  data?.records || {},
+    };
+  });
+}
