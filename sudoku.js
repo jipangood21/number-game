@@ -141,6 +141,51 @@ function solveSudokuFast(board, rows, cols, boxes) {
   return false;
 }
 
+/**
+ * 백트래킹으로 해의 개수를 최대 limit개까지 셈
+ * generateSudokuPuzzle에서 유일해 확인에 사용
+ */
+function countSolutionsFast(board, rows, cols, boxes, limit) {
+  let count = 0;
+
+  function solve() {
+    if (count >= limit) return;
+    let minCnt = 10, bestIdx = -1, bestUsed = 0;
+
+    for (let i = 0; i < SUDOKU_CELLS; i += 1) {
+      if (board[i] !== 0) continue;
+      const r = sudokuRow(i);
+      const c = sudokuCol(i);
+      const b = Math.floor(r / 3) * 3 + Math.floor(c / 3);
+      const used = rows[r] | cols[c] | boxes[b];
+      let cnt = 0;
+      for (let n = 1; n <= 9; n += 1) if (!(used & (1 << n))) cnt += 1;
+      if (cnt === 0) return;
+      if (cnt < minCnt) { minCnt = cnt; bestIdx = i; bestUsed = used; if (cnt === 1) break; }
+    }
+
+    if (bestIdx === -1) { count += 1; return; }
+
+    const r = sudokuRow(bestIdx);
+    const c = sudokuCol(bestIdx);
+    const b = Math.floor(r / 3) * 3 + Math.floor(c / 3);
+
+    for (let n = 1; n <= 9; n += 1) {
+      if (bestUsed & (1 << n)) continue;
+      if (count >= limit) return;
+      const bit = 1 << n;
+      board[bestIdx] = n;
+      rows[r] |= bit; cols[c] |= bit; boxes[b] |= bit;
+      solve();
+      board[bestIdx] = 0;
+      rows[r] &= ~bit; cols[c] &= ~bit; boxes[b] &= ~bit;
+    }
+  }
+
+  solve();
+  return count;
+}
+
 /** 정답이 채워진 스도쿠 판 생성 (최적화 버전) */
 function generateSolvedBoard() {
   const board = Array(SUDOKU_CELLS).fill(0);
@@ -153,7 +198,10 @@ function generateSolvedBoard() {
   return board;
 }
 
-/** 난이도에 맞는 스도쿠 퍼즐(문제판) 생성 */
+/**
+ * 난이도에 맞는 스도쿠 퍼즐(문제판) 생성
+ * 셀 제거 시 유일해 검증 → 추론만으로 풀 수 없는(복수 해) 퍼즐 방지
+ */
 function generateSudokuPuzzle(difficultyKey) {
   const solution = generateSolvedBoard();
   const puzzle = [...solution];
@@ -161,8 +209,20 @@ function generateSudokuPuzzle(difficultyKey) {
   const removeCount = SUDOKU_CELLS - clues;
   const indices = shuffleArray(Array.from({ length: SUDOKU_CELLS }, (_, i) => i));
 
-  for (let i = 0; i < removeCount; i += 1) {
-    puzzle[indices[i]] = 0;
+  let removed = 0;
+  for (let i = 0; i < indices.length && removed < removeCount; i += 1) {
+    const idx = indices[i];
+    const backup = puzzle[idx];
+    puzzle[idx] = 0;
+
+    const boardCopy = [...puzzle];
+    const { rows, cols, boxes } = buildConstraintMasks(boardCopy);
+
+    if (countSolutionsFast(boardCopy, rows, cols, boxes, 2) === 1) {
+      removed += 1;
+    } else {
+      puzzle[idx] = backup; // 유일해가 아니면 복원
+    }
   }
 
   return { puzzle, solution };

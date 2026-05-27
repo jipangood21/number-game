@@ -1,0 +1,108 @@
+const CHANGELOG = [
+  {
+    version: "1.0.5",
+    date: "2026-05-27",
+    changes: [
+      "스도쿠 게임 개선",
+      "벽돌깨기 게임 개선",
+      "기타 버그 수정"
+    ]
+  },
+
+  {
+    version: "1.0.4",
+    date: "2026-05-27",
+    changes: [
+      "스도쿠 게임 이어하기 추가",
+      "벽돌깨기 게임 추가",
+      "ui 개편",
+      "기타 버그 수정"
+    ]
+  },
+  {
+    version: "1.0.3",
+    date: "2026-05-26",
+    changes: [
+      "스도쿠 게임 중 숫자 표시 기능 추가",
+      "새로운 게임 블록 블래스트 추가",
+      "기타 버그 수정"
+    ]
+  },
+  {
+    version: "1.0.2",
+    date: "2026-05-22",
+    changes: [
+      "버전 정보 확인 기능 추가",
+      "홈 화면 하단에 버전 표시 및 클릭 시 수정 내역 팝업 제공",
+      "버전별 업데이트 내역을 한눈에 볼 수 있는 UI 개선"
+    ]
+  },
+  {
+    version: "1.0.1",
+    date: "2026-05-22",
+    changes: [
+      "스도쿠 게임 추가",
+      "메모 및 힌트 기능 구현",
+      "로그인 시스템 구현"
+    ]
+  },
+  {
+    version: "1.0.0",
+    date: "2026-05-22",
+    changes: [
+      "숫자게임 정식 릴리즈",
+      "Up/Down 게임 및 숫자야구 추가",
+      "게임별 난이도 선택기능"
+    ]
+  }
+];
+
+// ── Version Widget / Modal ──────────────────────────────────────────────────
+(function () {
+  const versionWidget        = document.getElementById("version-widget");
+  const versionText          = document.getElementById("version-text");
+  const versionModal         = document.getElementById("version-modal");
+  const versionModalBackdrop = document.getElementById("version-modal-backdrop");
+  const versionClose         = document.getElementById("version-close");
+  const versionList          = document.getElementById("version-list");
+
+  function renderChangelog() {
+    versionList.innerHTML = CHANGELOG.map(item => `
+      <div class="version-item">
+        <div class="version-header">
+          <span class="version-num">v${item.version}</span>
+          <span class="version-date">${item.date}</span>
+        </div>
+        <ul class="version-changes">
+          ${item.changes.map(c => `<li>${c}</li>`).join("")}
+        </ul>
+      </div>
+    `).join("");
+  }
+
+  function openModal()  { versionModal.classList.add("active"); }
+  function closeModal() { versionModal.classList.remove("active"); }
+
+  function init() {
+    if (!CHANGELOG || CHANGELOG.length === 0) return;
+    versionText.textContent = t("version.label", { version: CHANGELOG[0].version });
+    renderChangelog();
+    versionWidget.addEventListener("click", openModal);
+    versionModalBackdrop.addEventListener("click", closeModal);
+    versionClose.addEventListener("click", closeModal);
+  }
+
+  window.updateVersionUI = function () {
+    if (!CHANGELOG || CHANGELOG.length === 0) return;
+    versionText.textContent = t("version.label", { version: CHANGELOG[0].version });
+    const title = versionModal.querySelector(".version-modal-title");
+    if (title) title.textContent = t("version.title");
+    if (versionClose) versionClose.textContent = t("version.close");
+  };
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
+})();

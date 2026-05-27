@@ -1,0 +1,148 @@
+/* ══════════════════════════════════════════════
+   숫자게임 — Sudoku
+   toolbar · grid · cells · notes · numpad
+   ══════════════════════════════════════════════ */
+
+/* ── Sudoku Toolbar ─────────────────────────── */
+.sudoku-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border);
+}
+.sudoku-status             { display: flex; flex-direction: column; gap: 0.35rem; }
+.sudoku-hearts             { display: flex; gap: 0.2rem; font-size: 1rem; line-height: 1; }
+.sudoku-hearts .heart      { color: var(--text); }
+.sudoku-hearts .heart.empty{ color: var(--border); }
+
+.btn-invincible {
+  width: 100%;
+  padding: 0.7rem;
+  margin-top: 0.75rem;
+  margin-bottom: 0.25rem;
+  background: var(--surface);
+  border: 1.5px solid var(--border-strong);
+  border-radius: var(--r-md);
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.btn-invincible:hover  { background: var(--hover); }
+.btn-invincible.active { background: var(--text); color: var(--primary-fg); }
+
+.sudoku-toolbar-btns { display: flex; gap: 0.35rem; }
+
+.toolbar-btn {
+  padding: 0.45rem 0.6rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.toolbar-btn:hover  { border-color: var(--border-strong); background: var(--hover); }
+.toolbar-btn.active { background: var(--text); color: var(--primary-fg); border-color: var(--text); }
+
+.sudoku-message {
+  min-height: 1.25rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 0.65rem;
+  text-align: center;
+}
+
+/* ── Sudoku Grid ────────────────────────────── */
+.sudoku-grid {
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  border: 2px solid var(--border-strong);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  margin-bottom: 1rem;
+  width: 100%;
+  aspect-ratio: 1;
+}
+
+.sudoku-cell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  padding: 0;
+  cursor: pointer;
+  font-size: clamp(0.85rem, 4vw, 1.15rem);
+  font-weight: 700;
+  aspect-ratio: 1;
+  min-height: 0;
+  transition: background 0.1s;
+}
+.sudoku-cell:nth-child(3n) { border-right: 2px solid var(--border-strong); }
+.sudoku-cell:nth-child(n+19):nth-child(-n+27),
+.sudoku-cell:nth-child(n+46):nth-child(-n+54) { border-bottom: 2px solid var(--border-strong); }
+
+.sudoku-cell.fixed         { background: var(--bg-card); cursor: default; color: var(--text); }
+.sudoku-cell.selected      { background: #e2e8f0; outline: 2px solid var(--border-strong); outline-offset: -2px; z-index: 1; }
+.sudoku-cell.same-number   { background: var(--highlight) !important; }
+.sudoku-cell.conflict      { background: var(--conflict-bg); }
+.sudoku-cell.conflict .sudoku-value     { color: var(--conflict-fg); }
+.sudoku-cell.wrong-answer .sudoku-value { color: var(--conflict-fg); opacity: 0.6; text-decoration: line-through; }
+.sudoku-cell.hinted .sudoku-value       { color: var(--text-faint); }
+.sudoku-cell.note-highlight             { background: rgba(219, 234, 254, 0.45); }
+
+.sudoku-value { line-height: 1; }
+
+.sudoku-notes {
+  display: none;
+  position: absolute;
+  inset: 2px;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  font-size: 0.45rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+.sudoku-cell.show-notes .sudoku-notes { display: grid; }
+.sudoku-cell.show-notes .sudoku-value { display: none; }
+.sudoku-notes span                    { display: flex; align-items: center; justify-content: center; }
+.sudoku-notes span.note-hl            { color: #1d4ed8; font-weight: 700; }
+
+/* ── Sudoku Numpad ──────────────────────────── */
+.sudoku-numpad {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.45rem;
+  margin-bottom: 1rem;
+}
+.sudoku-num-btn {
+  padding: 0.75rem 0;
+  font-size: 1rem;
+  font-weight: 700;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.12s;
+}
+.sudoku-num-btn:hover       { background: var(--hover); border-color: var(--border-strong); box-shadow: var(--shadow-xs); }
+.sudoku-num-btn:active      { transform: scale(0.95); }
+.sudoku-num-btn.memo-noted  { color: #1d4ed8; border-color: #93c5fd; background: rgba(37, 99, 235, 0.08); font-weight: 800; }
+
+/* ── Landscape (소형 기기 가로 모드) ────────── */
+@media (max-height: 700px) and (orientation: landscape) {
+  body            { padding: 0.75rem 1.5rem; }
+  .app--sudoku    { max-width: 360px; }
+  .sudoku-toolbar { margin-bottom: 0.35rem; padding-bottom: 0.35rem; }
+  .sudoku-message { margin-bottom: 0.3rem; min-height: 0.9rem; }
+  .sudoku-grid    { margin-bottom: 0.5rem; }
+  .sudoku-numpad  { gap: 0.25rem; margin-bottom: 0.4rem; }
+  .sudoku-num-btn { padding: 0.45rem 0; font-size: 0.9rem; }
+}

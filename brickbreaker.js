@@ -29,6 +29,7 @@ let bbMouseLogicalX = null;
 let bbKeys = { left: false, right: false };
 let bbInputRegistered = false;
 let bbAim = { active: false, angle: -Math.PI / 2 };
+let bbCanvasTouchHandler = null;
 
 function bbGetLogicalX(clientX) {
   if (!bbState?.canvas) return null;
@@ -65,17 +66,6 @@ function bbRegisterInput() {
     if (!bbState.launched) { bbAim.active = true; bbUpdateAimAngle(lx, ly); }
   });
 
-  const bbTouchTrack = (e) => {
-    if (!bbState || bbState.gameOver) return;
-    if (e.cancelable) e.preventDefault();
-    const lx = bbGetLogicalX(e.touches[0].clientX);
-    const ly = bbGetLogicalY(e.touches[0].clientY);
-    bbMouseLogicalX = lx;
-    if (!bbState.launched) { bbAim.active = true; bbUpdateAimAngle(lx, ly); }
-  };
-  window.addEventListener("touchstart", bbTouchTrack, { passive: false });
-  window.addEventListener("touchmove",  bbTouchTrack, { passive: false });
-
   window.addEventListener("touchend", () => {
     if (!bbState || bbState.gameOver || bbState.launched) return;
     if (bbAim.active) bbLaunchBall();
@@ -95,6 +85,30 @@ function bbRegisterInput() {
     if (e.key === "ArrowLeft"  || e.key === "a" || e.key === "A") bbKeys.left  = false;
     if (e.key === "ArrowRight" || e.key === "d" || e.key === "D") bbKeys.right = false;
   });
+}
+
+function bbRegisterCanvasTouch(canvas) {
+  bbUnregisterCanvasTouch();
+  bbCanvasTouchHandler = (e) => {
+    if (!bbState || bbState.gameOver) return;
+    if (e.cancelable) e.preventDefault();
+    const lx = bbGetLogicalX(e.touches[0].clientX);
+    const ly = bbGetLogicalY(e.touches[0].clientY);
+    bbMouseLogicalX = lx;
+    if (!bbState.launched) { bbAim.active = true; bbUpdateAimAngle(lx, ly); }
+  };
+  canvas.addEventListener("touchstart", bbCanvasTouchHandler, { passive: false });
+  canvas.addEventListener("touchmove",  bbCanvasTouchHandler, { passive: false });
+}
+
+function bbUnregisterCanvasTouch() {
+  if (!bbCanvasTouchHandler) return;
+  const c = document.getElementById("brickbreaker-canvas");
+  if (c) {
+    c.removeEventListener("touchstart", bbCanvasTouchHandler);
+    c.removeEventListener("touchmove",  bbCanvasTouchHandler);
+  }
+  bbCanvasTouchHandler = null;
 }
 
 // ── 벽돌 그리드 생성 ─────────────────────────────────────────
@@ -167,7 +181,7 @@ function startBrickbreakerGame(difficultyKey) {
     elapsedSeconds: 0,
   };
 
-  // 데스크탑: 클릭으로 발사 (마우스 hover가 조준각 설정)
+  canvas.style.touchAction = "none";
   canvas.onclick = () => {
     if (bbState && !bbState.launched && !bbState.gameOver) bbLaunchBall();
   };
@@ -177,6 +191,7 @@ function startBrickbreakerGame(difficultyKey) {
   if (appEl) appEl.classList.add("app--brickbreaker");
 
   bbRegisterInput();
+  bbRegisterCanvasTouch(canvas);
   bbUpdateHUD();
   bbSetMessage(t("bb.clickToLaunch"));
   showScreen("brickbreakerPlay");
@@ -243,7 +258,7 @@ function bbLoop(timestamp) {
   if (!bbState) return;
 
   if (bbLastTime !== null && bbState.launched && !bbState.paused && !bbState.gameOver) {
-    const dt = Math.min((timestamp - bbLastTime) / 1000, 0.05); // 최대 50ms (≈20fps 하한)
+    const dt = Math.min((timestamp - bbLastTime) / 1000, 0.033); // 최대 33ms (≈30fps 하한)
     bbUpdate(dt);
   }
   bbLastTime = timestamp;
@@ -273,46 +288,41 @@ function bbMovePaddle(dt) {
   }
 }
 
-// ── 공 이동 + 충돌 ────────────────────────────────────────────
+// ── 공 이동 + 충돌 (서브스텝) ────────────────────────────────
 function bbMoveBall(dt) {
   const b = bbState.ball;
   const p = bbState.paddle;
+  const speed = Math.hypot(b.vx, b.vy);
+  const steps = Math.min(4, Math.max(1, Math.ceil(speed * dt / b.r)));
+  const subDt  = dt / steps;
 
-  b.x += b.vx * dt;
-  b.y += b.vy * dt;
+  for (let s = 0; s < steps; s++) {
+    b.x += b.vx * subDt;
+    b.y += b.vy * subDt;
 
-  // 좌우 벽
-  if (b.x - b.r < 0)    { b.x = b.r;          b.vx =  Math.abs(b.vx); }
-  if (b.x + b.r > BB_W) { b.x = BB_W - b.r;   b.vx = -Math.abs(b.vx); }
-  // 천장
-  if (b.y - b.r < 0)    { b.y = b.r;           b.vy =  Math.abs(b.vy); }
+    if (b.x - b.r < 0)    { b.x = b.r;        b.vx =  Math.abs(b.vx); }
+    if (b.x + b.r > BB_W) { b.x = BB_W - b.r; b.vx = -Math.abs(b.vx); }
+    if (b.y - b.r < 0)    { b.y = b.r;         b.vy =  Math.abs(b.vy); }
 
-  // 패들 충돌
-  if (
-    b.vy > 0 &&
-    b.y + b.r >= p.y &&
-    b.y       <= p.y + p.h &&
-    b.x + b.r >= p.x &&
-    b.x - b.r <= p.x + p.w
-  ) {
-    const hitRatio = ((b.x - (p.x + p.w / 2)) / (p.w / 2)); // -1 ~ +1
-    const angle    = hitRatio * (Math.PI / 3);                // -60° ~ +60°
-    const speed    = Math.hypot(b.vx, b.vy);
-    b.vx = speed * Math.sin(angle);
-    b.vy = -Math.abs(speed * Math.cos(angle));
-    b.y  = p.y - b.r - 1;
+    if (b.vy > 0 && b.y + b.r >= p.y && b.y <= p.y + p.h &&
+        b.x + b.r >= p.x && b.x - b.r <= p.x + p.w) {
+      const hitRatio = (b.x - (p.x + p.w / 2)) / (p.w / 2);
+      const angle    = hitRatio * (Math.PI / 3);
+      const spd      = Math.hypot(b.vx, b.vy);
+      b.vx = spd * Math.sin(angle);
+      b.vy = -Math.abs(spd * Math.cos(angle));
+      b.y  = p.y - b.r - 1;
+    }
+
+    bbBrickCollision();
+    if (!bbState.launched) return;
+    if (b.y - b.r > BB_H) { bbLoseLife(); return; }
   }
-
-  // 벽돌 충돌
-  bbBrickCollision();
-
-  // 낙사
-  if (b.y - b.r > BB_H) bbLoseLife();
 }
 
-// ── 벽돌 충돌 (AABB + 겹침 방향) ─────────────────────────────
+// ── 벽돌 충돌 (AABB + 침투 해소 + 코너 보정) ────────────────
 function bbBrickCollision() {
-  const b   = bbState.ball;
+  const b = bbState.ball;
   let deflected = false;
 
   for (const row of bbState.bricks) {
@@ -321,7 +331,6 @@ function bbBrickCollision() {
       if (b.x + b.r <= brick.x || b.x - b.r >= brick.x + brick.w) continue;
       if (b.y + b.r <= brick.y || b.y - b.r >= brick.y + brick.h) continue;
 
-      // HP 차감
       brick.hp -= 1;
       if (brick.hp <= 0) {
         brick.active = false;
@@ -331,15 +340,33 @@ function bbBrickCollision() {
         if (bbState.bricksLeft <= 0) { bbNextLevel(); return; }
       }
 
-      // 반사 (한 프레임에 한 번만)
       if (!deflected) {
         deflected = true;
-        const ol = (b.x + b.r) - brick.x;
-        const or_ = (brick.x + brick.w) - (b.x - b.r);
-        const ot = (b.y + b.r) - brick.y;
-        const ob = (brick.y + brick.h) - (b.y - b.r);
-        if (Math.min(ol, or_) < Math.min(ot, ob)) b.vx = -b.vx;
-        else                                        b.vy = -b.vy;
+        const overlapL = (b.x + b.r) - brick.x;
+        const overlapR = (brick.x + brick.w) - (b.x - b.r);
+        const overlapT = (b.y + b.r) - brick.y;
+        const overlapB = (brick.y + brick.h) - (b.y - b.r);
+        const ox = Math.min(overlapL, overlapR);
+        const oy = Math.min(overlapT, overlapB);
+        if (ox < oy * 0.8) {
+          b.vx = -b.vx;
+          if (overlapL < overlapR) b.x -= overlapL;
+          else                      b.x += overlapR;
+        } else if (oy < ox * 0.8) {
+          b.vy = -b.vy;
+          if (overlapT < overlapB) b.y -= overlapT;
+          else                      b.y += overlapB;
+        } else {
+          if (Math.abs(b.vx) >= Math.abs(b.vy)) {
+            b.vx = -b.vx;
+            if (overlapL < overlapR) b.x -= overlapL;
+            else                      b.x += overlapR;
+          } else {
+            b.vy = -b.vy;
+            if (overlapT < overlapB) b.y -= overlapT;
+            else                      b.y += overlapB;
+          }
+        }
       }
     }
   }
@@ -427,6 +454,7 @@ function bbEndGame() {
 // ── 게임 종료 시 정리 (홈으로 이동 때 호출) ──────────────────
 function exitBrickbreakerGame() {
   stopBBTimer();
+  bbUnregisterCanvasTouch();
   if (bbState?.animFrameId) { cancelAnimationFrame(bbState.animFrameId); }
   const appEl = document.querySelector(".app");
   if (appEl) appEl.classList.remove("app--brickbreaker");

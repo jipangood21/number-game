@@ -1,0 +1,223 @@
+/* ══════════════════════════════════════════════
+   숫자게임 — Block Blast & Brick Breaker
+   board · pieces · animations · canvas
+   ══════════════════════════════════════════════ */
+
+/* ══════════════════════════════════════════════
+   Block Blast
+   ══════════════════════════════════════════════ */
+.blockblast-board-container {
+  display: flex;
+  justify-content: center;
+  margin: 1.25rem 0;
+}
+.blockblast-board {
+  display: grid;
+  grid-template-columns: repeat(8, var(--bb-cell-size));
+  grid-template-rows: repeat(8, var(--bb-cell-size));
+  gap: 4px;
+  background: var(--border);
+  padding: 6px;
+  border-radius: var(--r-md);
+  width: fit-content;
+  margin: 0 auto;
+  box-shadow: var(--shadow-md);
+}
+.blockblast-cell {
+  background: var(--surface);
+  border-radius: var(--r-xs);
+  width: var(--bb-cell-size);
+  height: var(--bb-cell-size);
+  transition: background 0.2s, transform 0.2s;
+  pointer-events: none;
+  user-select: none;
+}
+.blockblast-cell.filled {
+  background: var(--primary);
+  box-shadow: inset 0 0 8px rgba(0,0,0,.1);
+}
+.blockblast-cell.preview {
+  opacity: 0.6;
+  z-index: 5;
+  outline: 2px dashed rgba(255,255,255,.8);
+  outline-offset: -4px;
+  animation: preview-pulse 1s infinite alternate;
+}
+@keyframes preview-pulse {
+  from { opacity: 0.4; transform: scale(0.98); }
+  to   { opacity: 0.7; transform: scale(1); }
+}
+.blockblast-cell.clearing {
+  animation: cell-fall-down 0.8s cubic-bezier(.5,0,.7,.4) forwards !important;
+  z-index: 9999 !important;
+  pointer-events: none;
+}
+@keyframes cell-fall-down {
+  0%   { transform: scale(1)   translateY(0)     rotate(0);      filter: brightness(1);   opacity: 1; }
+  20%  { transform: scale(1.3) translateY(-20px) rotate(15deg);  filter: brightness(3);   opacity: 1; }
+  100% { transform: scale(0.2) translateY(500px) rotate(-60deg); filter: brightness(0.5); opacity: 0; }
+}
+
+/* Board shake */
+.board-impact { animation: board-impact-shake 0.3s ease-out; }
+@keyframes board-impact-shake {
+  0%   { transform: translateX(0); }
+  25%  { transform: translateX(-8px) translateY(-3px); }
+  50%  { transform: translateX(8px)  translateY(3px); }
+  75%  { transform: translateX(-5px) translateY(2px); }
+  100% { transform: translateX(0); }
+}
+
+/* Score popup */
+.score-popup {
+  position: fixed;
+  color: #ffca28;
+  font-weight: 900;
+  font-size: 2rem;
+  pointer-events: none;
+  z-index: 100000 !important;
+  animation: score-float-up 1.2s ease-out forwards;
+  text-shadow: 0 0 10px rgba(0,0,0,.5), 0 2px 5px rgba(0,0,0,.8);
+  white-space: nowrap;
+  transform: translate(-50%, -50%);
+}
+@keyframes score-float-up {
+  0%   { transform: translate(-50%, 0)      scale(0.5); opacity: 0; }
+  20%  { transform: translate(-50%, -40px)  scale(1.2); opacity: 1; }
+  100% { transform: translate(-50%, -120px) scale(1.0); opacity: 0; }
+}
+
+/* Pieces tray */
+.blockblast-pieces {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+  min-height: 140px;
+  padding: 0.75rem;
+  background: var(--bg-card);
+  border-radius: var(--r-md);
+  overflow: visible;
+  box-shadow: inset 0 2px 6px rgba(0,0,0,.04);
+}
+.block-piece {
+  cursor: grab;
+  display: grid;
+  gap: 2px;
+  transition: transform 0.2s;
+  user-select: none;
+  touch-action: none;
+  transform: scale(0.65);
+  transform-origin: center center;
+}
+.block-piece:active   { cursor: grabbing; }
+.block-piece.dragging {
+  position: fixed;
+  pointer-events: none;
+  opacity: 1;
+  z-index: 9999;
+  transition: none !important;
+  filter: drop-shadow(0 15px 25px rgba(0,0,0,.4));
+  transform-origin: top left;
+}
+.block-piece.placed { opacity: 0; pointer-events: none; }
+
+.piece-cell {
+  width: var(--bb-cell-size);
+  height: var(--bb-cell-size);
+  border-radius: var(--r-xs);
+  background: transparent;
+}
+.piece-cell:not(.filled) { visibility: hidden; }
+.piece-cell.filled       { background: var(--primary); }
+
+.blockblast-message {
+  text-align: center;
+  margin: 0.75rem 0;
+  min-height: 1.5rem;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--text-muted);
+}
+
+/* Block Colors */
+.block-color-red.filled,    .block-color-red .filled    { background-color: #ff5252 !important; }
+.block-color-orange.filled, .block-color-orange .filled { background-color: #ff9100 !important; }
+.block-color-yellow.filled, .block-color-yellow .filled { background-color: #ffd600 !important; }
+.block-color-green.filled,  .block-color-green .filled  { background-color: #4caf50 !important; }
+.block-color-blue.filled,   .block-color-blue .filled   { background-color: #2196f3 !important; }
+.block-color-purple.filled, .block-color-purple .filled { background-color: #9c27b0 !important; }
+.block-color-pink.filled,   .block-color-pink .filled   { background-color: #e91e63 !important; }
+.block-color-cyan.filled,   .block-color-cyan .filled   { background-color: #00bcd4 !important; }
+
+/* ── Touch / Select prevention ──────────────── */
+.block-piece, .blockblast-board, .blockblast-cell {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: none;
+}
+
+/* ── 480px (소형 모바일) ─────────────────────── */
+@media (max-width: 480px) {
+  :root { --bb-cell-size: 34px; }
+  .app--blockblast   { max-width: 100%; padding: 0 5px; }
+  .blockblast-board  { gap: 3px; padding: 4px; }
+  .blockblast-pieces { gap: 0.25rem; min-height: 120px; padding: 0.4rem; }
+  .block-piece       { transform: scale(0.55); }
+}
+
+/* ══════════════════════════════════════════════
+   Brick Breaker
+   ══════════════════════════════════════════════ */
+.app--brickbreaker { max-width: 520px; }
+
+.bb-hud {
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+.bb-level-row {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+.bb-lives {
+  font-size: 1rem;
+  color: #ef4444;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+}
+
+.bb-toolbar {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 0.6rem;
+}
+
+.bb-canvas-wrap {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+#brickbreaker-canvas {
+  display: block;
+  width: 100%;
+  max-width: 480px;
+  aspect-ratio: 4 / 5;
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-md);
+  cursor: crosshair;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.bb-controls-hint {
+  font-size: 0.72rem;
+  color: var(--text-faint);
+  text-align: center;
+  margin: 0.5rem 0 0.25rem;
+}
